@@ -113,6 +113,7 @@ class PhotoViewCoreState extends State<PhotoViewCore>
   Offset? _normalizedPosition;
   double? _scaleBefore;
   double? _rotationBefore;
+  Offset? _lastTapDownPosition;
 
   late final AnimationController _scaleAnimationController;
   Animation<double>? _scaleAnimation;
@@ -300,6 +301,31 @@ class PhotoViewCoreState extends State<PhotoViewCore>
     widget.onTapDown?.call(context, details, controller.value);
   }
 
+  void handleDoubleTap() {
+    if (_lastTapDownPosition == null) {
+      return;
+    }
+
+    final currentScale = controller.scale!;
+    final newScale = currentScale == scaleBoundaries.initialScale
+        ? scaleBoundaries.initialScale * 3
+        : scaleBoundaries.initialScale;
+
+    final Size size = context.size!;
+    final Offset center = size.center(Offset.zero);
+    final Offset tapOffset = _lastTapDownPosition!;
+    final Offset delta = (center - tapOffset) * (newScale / currentScale - 1);
+
+    final Offset newPosition = controller.position + delta;
+
+    animateScale(currentScale, newScale);
+    animatePosition(controller.position, clampPosition(position: newPosition, scale: newScale));
+  }
+
+  void handleDoubleTapDown(details) {
+    _lastTapDownPosition = details.localPosition;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if we need a recalc on the scale
@@ -355,7 +381,8 @@ class PhotoViewCoreState extends State<PhotoViewCore>
 
             return PhotoViewGestureDetector(
               child: child,
-              onDoubleTap: nextScaleState,
+              onDoubleTap: handleDoubleTap,
+              onDoubleTapDown: handleDoubleTapDown,
               onScaleStart: onScaleStart,
               onScaleUpdate: onScaleUpdate,
               onScaleEnd: onScaleEnd,
